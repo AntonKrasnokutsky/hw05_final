@@ -11,7 +11,7 @@ from django.core.cache import cache
 from django.conf import settings
 from django import forms
 
-from posts.models import Post, Group, Comment
+from posts.models import Post, Group, Comment, Follow
 
 User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -23,6 +23,7 @@ class PostViewsTests(TestCase):
     def setUpClass(cls, *args, **kwargs):
         super().setUpClass()
         cls.user = User.objects.create_user(username='author')
+        cls.other_author = User.objects.create_user(username='other_author')
         cls.group = Group.objects.create(
             title='Название группы',
             slug='group-slag',
@@ -69,6 +70,8 @@ class PostViewsTests(TestCase):
         self.guest_client = Client()
         self.author_client = Client()
         self.author_client.force_login(self.user)
+        self.other_client = Client()
+        self.other_client.force_login(self.other_author)
 
     def test_guest_page_accessible_by_name(self, *args, **kwargs):
         """URLs, генерируемые при помощи имён, доступны всем."""
@@ -135,6 +138,7 @@ class PostViewsTests(TestCase):
             reverse('posts:post_edit', kwargs={
                 'post_id': self.post.id,
             }): 'posts/create_post.html',
+            reverse('posts:follow_index'): 'posts/index.html',
         }
         for reverse_name, template in author_urls_names.items():
             with self.subTest(reverse_name=reverse_name):
@@ -308,3 +312,48 @@ class PostViewsTests(TestCase):
         cache.clear()
         response = self.client.get(reverse('posts:index'))
         self.assertNotIn(post.text.encode('utf-8'), response.content)
+
+    def test_add_follow(self, *args, **kwargs):
+        count = Follow.objects.all().count()
+        self.other_client.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={
+                    'username': self.user.username,
+                }))
+        new_count = Follow.objects.all().count()
+        self.assertEqual(new_count, count + 1)
+
+    def test_remove_follow(self, *args, **kwargs):
+        self.other_client.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={
+                    'username': self.user.username,
+                }))
+        count = Follow.objects.all().count()
+        self.other_client.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={
+                    'username': self.user.username,
+                }))
+        new_count = Follow.objects.all().count()
+        self.assertEqual(new_count, count - 1)
+
+    def test_new_post_followin_in_tape(self, *args, **kwargs):
+        self.other_client.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={
+                    'username': self.user.username,
+                }))
+        new_post = Post.objects.create(
+            text='Новый пост в тесте подписок!!!',
+            author=self.user,
+        )
+        response = self.other_client.get(reverse('posts:follow_index'))
+        self.assertEqual(response.context['page_obj'][0], new_post)
+
+        response = self.author_client.get(reverse('posts:follow_index'))
+        self.assertEqual(len(response.context['page_obj']), 0)
