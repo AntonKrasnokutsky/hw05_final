@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Новый пост{% endblock %}
+
+{% block content %}
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8 p-5">
+        <div class="card">
+          <div class="card-header">
+            {% if is_edit %}
+              Редактировать пост
+            {% else %}
+              Новый пост
+            {% endif %}
+          </div>
+          <div class="card-body">
+            <form method="post"
+            enctype="multipart/form-data"
+            {% if is_edit %}
+            action="{% url 'posts:post_edit' post_id %}"
+            {% else %}
+              action="{% url 'posts:post_create' %}"
+            {% endif %}>
+              {% csrf_token %}
+              <div class="form-group row my-3 p-3">
+                <label for="id_text">
+                  {{ form.text.label_tag }}
+                  <span class="required text-danger" >*</span>
+                </label>
+                <textarea name="text" cols="40" rows="10" class="form-control" required id="id_text">{% if form.text.value %} {{ form.text.value }} {% endif %}</textarea>
+                <small id="id_text-help" class="form-text text-muted">
+                  {{ form.text.help_text }}
+                </small>
+              </div>
+              <div class="form-group row my-3 p-3">
+                <label for="id_group">
+                  {{ form.group.label_tag }}
+                </label>
+                <select name="group" class="form-control" id="id_group">
+                  <option value="" selected>---------</option>
+                  {% for group in groups %}
+                    <option value="{{ group.id }}" {% if form.group.value == group.id %} selected {% endif %}>Группа: {{ group.title }}</option>
+                  {% endfor %}
+                </select>
+                <small id="id_group-help" class="form-text text-muted">
+                  {{ form.group.help_text }}
+                </small>
+              </div>
+              <div class="form-group row my-3 p-3">
+                <label for="id_image">Картинка:</label>
+                {% if form.image.value %}
+                  На данный момент: 
+                  <a href="/media/{{ form.image.value }}">{{ form.image.value }}</a>
+                  <input type="checkbox" name="image-clear" id="image-clear_id" value="Очистить">
+                  <label for="image-clear_id">Очистить</label>
+                  <br>
+                  Изменить:
+                {% endif %}
+                <input type="file" name="image" accept="image/*" id="id_image">
+                <small id="id_image-help" class="form-text text-muted">
+                  {{ form.image.help_text }}
+                </small>
+              </div>
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                  {% if is_edit %}
+                    Сохранить
+                  {% else %}
+                    Новый пост
+                  {% endif %}
+                </button>
+              </div>
+              
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
