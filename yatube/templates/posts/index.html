@@ -9,7 +9,7 @@
     {% include 'posts/includes/switcher.html' %}
     {% for post in page_obj %}
       <article>
-        {% include 'posts/includes/post_list.html' %}
+        {% include 'posts/includes/post.html' %}
         <a href="{% url 'posts:profile' post.author.username %}">все посты автора</a>
         {% if post.group %}
           <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>

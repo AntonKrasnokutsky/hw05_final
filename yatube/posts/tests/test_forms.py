@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
 
-from posts.models import Group, Post
+from posts.models import Group, Post, Comment
 
 User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -109,7 +109,7 @@ class PostCreateFormTests(TestCase):
 
     def test_create_comment_authorized_user(self, *args, **kwargs):
         post = Post.objects.last()
-        comment_count = post.comments.all().count()
+        comment_count = post.comments.count()
         form_data = {
             'text': 'Тестовый комментарий.',
         }
@@ -130,7 +130,13 @@ class PostCreateFormTests(TestCase):
                 'posts:post_detail',
                 kwargs={
                     'post_id': post.id,
-                }))
+                },
+            ))
+
+        last_comment = Comment.objects.latest('created')
+        self.assertEqual(last_comment.text, form_data['text'])
+        self.assertEqual(last_comment.post, post)
+        self.assertEqual(last_comment.author, self.user)
 
     def test_create_comment_guest_user(self, *args, **kwargs):
         post = Post.objects.last()

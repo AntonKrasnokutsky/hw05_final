@@ -12,7 +12,7 @@
     </p>
     {% for post in page_obj %}
       <article>
-        {% include 'posts/includes/post_list.html' %}
+        {% include 'posts/includes/post.html' %}
         <a href="{% url 'posts:profile' post.author.username %}">все посты автора</a>
       </article>
       {% if not forloop.last %}

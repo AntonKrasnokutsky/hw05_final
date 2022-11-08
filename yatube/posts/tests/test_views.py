@@ -3,15 +3,14 @@ import tempfile
 from http import HTTPStatus
 from itertools import islice
 
-from django.test import TestCase, Client, override_settings
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
+from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.conf import settings
-from django import forms
-
-from posts.models import Post, Group, Comment, Follow
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from posts.models import Comment, Follow, Group, Post
 
 User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -52,11 +51,8 @@ class PostViewsTests(TestCase):
             )
             for number_post in range(batch_size)
         )
-        while True:
-            posts = list(islice(objs, batch_size))
-            if not posts:
-                break
-            Post.objects.bulk_create(posts, batch_size)
+        posts = list(islice(objs, batch_size))
+        Post.objects.bulk_create(posts, batch_size)
 
         cls.post = Post.objects.first()
 
@@ -72,6 +68,13 @@ class PostViewsTests(TestCase):
         self.author_client.force_login(self.user)
         self.other_client = Client()
         self.other_client.force_login(self.other_author)
+        self.author_client.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={
+                    'username': self.other_author.username,
+                },
+            ))
 
     def test_guest_page_accessible_by_name(self, *args, **kwargs):
         """URLs, генерируемые при помощи имён, доступны всем."""
@@ -309,6 +312,11 @@ class PostViewsTests(TestCase):
         post = Post.objects.latest('created')
         Post.objects.latest('created').delete()
         self.assertIn(post.text.encode('utf-8'), response.content)
+
+    def test_index_page_clear_cache(self, *args, **kwargs):
+        response = self.client.get(reverse('posts:index'))
+        post = Post.objects.latest('created')
+        Post.objects.latest('created').delete()
         cache.clear()
         response = self.client.get(reverse('posts:index'))
         self.assertNotIn(post.text.encode('utf-8'), response.content)
@@ -320,26 +328,29 @@ class PostViewsTests(TestCase):
                 'posts:profile_follow',
                 kwargs={
                     'username': self.user.username,
-                }))
+                }
+            ))
         new_count = Follow.objects.all().count()
         self.assertEqual(new_count, count + 1)
+        new_follow = Follow.objects.last()
+        self.assertEqual(new_follow.user, self.other_author)
+        self.assertEqual(new_follow.author, self.user)
 
     def test_remove_follow(self, *args, **kwargs):
-        self.other_client.get(
-            reverse(
-                'posts:profile_follow',
-                kwargs={
-                    'username': self.user.username,
-                }))
         count = Follow.objects.all().count()
-        self.other_client.get(
+        self.author_client.get(
             reverse(
                 'posts:profile_unfollow',
                 kwargs={
-                    'username': self.user.username,
+                    'username': self.other_author.username,
                 }))
         new_count = Follow.objects.all().count()
         self.assertEqual(new_count, count - 1)
+        self.assertFalse(
+            Follow.objects.filter(
+                user=self.user,
+                author=self.other_author
+            ).exists())
 
     def test_new_post_followin_in_tape(self, *args, **kwargs):
         self.other_client.get(

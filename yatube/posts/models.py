@@ -80,14 +80,10 @@ class Comment(CreatedModel):
         verbose_name='Тексе комментария',
         help_text='Введите текст комментария',
     )
-    created = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата комментария',
-    )
 
     class Meta(CreatedModel.Meta):
         verbose_name = 'Комментарий'
-        verbose_name_plural = 'Комментраии'
+        verbose_name_plural = 'Комментарии'
 
 
 class Follow(models.Model):
