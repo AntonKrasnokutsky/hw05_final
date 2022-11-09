@@ -1,7 +1,6 @@
 import shutil
 import tempfile
 from http import HTTPStatus
-from itertools import islice
 
 from django import forms
 from django.conf import settings
