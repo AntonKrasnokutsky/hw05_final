@@ -42,7 +42,7 @@ class PostViewsTests(TestCase):
             content_type='image/gif'
         )
         batch_size = 15
-        objs = (
+        posts = [
             Post(
                 text=('Пост %s в тесте!!!' % number_post) * 20,
                 group=cls.group,
@@ -50,8 +50,7 @@ class PostViewsTests(TestCase):
                 image=cls.uploaded,
             )
             for number_post in range(batch_size)
-        )
-        posts = list(islice(objs, batch_size))
+        ]
         Post.objects.bulk_create(posts, batch_size)
 
         cls.post = Post.objects.first()
@@ -343,14 +342,16 @@ class PostViewsTests(TestCase):
                 'posts:profile_unfollow',
                 kwargs={
                     'username': self.other_author.username,
-                }))
+                }
+            ))
         new_count = Follow.objects.all().count()
         self.assertEqual(new_count, count - 1)
         self.assertFalse(
             Follow.objects.filter(
                 user=self.user,
                 author=self.other_author
-            ).exists())
+            ).exists()
+        )
 
     def test_new_post_followin_in_tape(self, *args, **kwargs):
         self.other_client.get(
@@ -358,7 +359,8 @@ class PostViewsTests(TestCase):
                 'posts:profile_follow',
                 kwargs={
                     'username': self.user.username,
-                }))
+                }
+            ))
         new_post = Post.objects.create(
             text='Новый пост в тесте подписок!!!',
             author=self.user,
